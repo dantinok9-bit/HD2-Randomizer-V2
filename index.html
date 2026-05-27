@@ -90,15 +90,17 @@ html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow
 .player-card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .2s,background .2s;cursor:default}
 .player-card.has-loadout{cursor:pointer}
 .player-card.mine{border-color:var(--yellow)}
-.player-card.accepted{border-color:var(--yellow);background:rgba(231,224,13,.07)}
+.player-card.accepted{border-color:var(--yellow);background:rgba(231,224,13,.10);box-shadow:0 0 12px rgba(231,224,13,.15)}
 .player-card.accepted .pc-hdr{background:rgba(231,224,13,.12)}
 .pc-hdr{background:var(--black);padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;transition:background .2s}
 .pc-dot{width:7px;height:7px;border-radius:50%;background:var(--steel);flex-shrink:0;transition:background .3s}
 .pc-dot.on{background:#44cc44}
 .pc-name{font-size:12px;font-weight:700;letter-spacing:1px;color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
 .pc-body{padding:8px 10px;position:relative}
-.pc-checkmark{position:absolute;bottom:7px;left:8px;width:20px;height:20px;border-radius:4px;border:2px solid var(--steel);display:flex;align-items:center;justify-content:center;transition:all .2s;background:transparent;font-size:12px}
-.pc-checkmark.checked{border-color:var(--yellow);background:var(--yellow);color:var(--black)}
+.accept-pill{font-size:8px;font-weight:700;letter-spacing:1.5px;padding:2px 6px;border-radius:3px;text-transform:uppercase;margin-bottom:6px;display:inline-block}
+.accept-pill.confirmed{background:rgba(231,224,13,.15);border:1px solid var(--yellow);color:var(--yellow)}
+.accept-pill.pending{background:rgba(98,101,122,.1);border:1px solid var(--steel);color:var(--steel);cursor:pointer}
+.accept-pill.waiting{background:rgba(98,101,122,.1);border:1px solid #2a2a2a;color:#444}
 .pc-empty{font-size:10px;color:var(--steel);letter-spacing:1px;text-align:center;padding:10px 0}
 .slot-item{margin-bottom:5px}
 .slot-lbl{font-size:8px;color:var(--steel);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:1px}
@@ -698,18 +700,27 @@ function renderRandomizer(data){
     const hasSlot=!!slot;
     const card=document.createElement("div");
     card.className="player-card"+(conn?" connected":"")+(isMe?" mine":"")+(accepted?" accepted":"")+(hasSlot?" has-loadout":"");
-    if(hasSlot&&isMe) card.onclick=()=>handleAcceptToggle(uname,!accepted);
+    if(hasSlot&&isMe) card.onclick=()=>{ const at=parseInt(localStorage.getItem('hd2_accepted_at_'+uname)||'0'); const locked=accepted&&(Date.now()-at)<120000; if(!locked){ if(!accepted) localStorage.setItem('hd2_accepted_at_'+uname,Date.now()); handleAcceptToggle(uname,!accepted); } };
     let body="";
     if(hasSlot){
-      const ck=accepted?"pc-checkmark checked":"pc-checkmark";
-      const ci=accepted?"\u2713":"";
-      body=`<div class="slot-item"><div class="slot-lbl">Primary</div><div class="slot-val">${slot.primary}</div></div>
+      // 2-min lock: check if user accepted within last 2 minutes
+      const acceptedAt = parseInt(localStorage.getItem("hd2_accepted_at_"+uname)||"0");
+      const now2 = Date.now();
+      const lockMs = 2 * 60 * 1000; // 2 minutes
+      const isLocked2min = accepted && (now2 - acceptedAt) < lockMs;
+      const remainSec = isLocked2min ? Math.ceil((lockMs - (now2 - acceptedAt)) / 1000) : 0;
+      const remainStr = remainSec > 0 ? ` (${Math.ceil(remainSec/60)}m ${remainSec%60}s)` : "";
+      // Pill indicator
+      let pill = "";
+      if(accepted) pill = `<div class="accept-pill confirmed">✓ READY${isMe&&isLocked2min?remainStr:""}</div>`;
+      else if(isMe) pill = `<div class="accept-pill pending">TAP TO CONFIRM</div>`;
+      else pill = `<div class="accept-pill waiting">PENDING</div>`;
+      body=`${pill}<div class="slot-item"><div class="slot-lbl">Primary</div><div class="slot-val">${slot.primary}</div></div>
 <div class="slot-item"><div class="slot-lbl">Secondary</div><div class="slot-val">${slot.secondary}</div></div>
 <div class="slot-item"><div class="slot-lbl">Grenade</div><div class="slot-val">${slot.grenade}</div></div>
 <div class="slot-item"><div class="slot-lbl">Stratagems</div>
 ${stratRow(slot.strat1,slot.strat1_type)}${stratRow(slot.strat2,slot.strat2_type)}${stratRow(slot.strat3,slot.strat3_type)}${stratRow(slot.strat4,slot.strat4_type)}
-</div><div class="slot-item"><div class="slot-lbl">Booster</div><div class="booster-val">${slot.booster}</div></div>
-${isMe?`<div class="${ck}">${ci}</div>`:(accepted?`<div class="pc-checkmark checked">\u2713</div>`:"")}`;
+</div><div class="slot-item"><div class="slot-lbl">Booster</div><div class="booster-val">${slot.booster}</div></div>`;
     } else { body=`<div class="pc-empty">${conn?"Waiting for mission...":"Disconnected"}</div>`; }
     card.innerHTML=`<div class="pc-hdr"><div class="pc-dot ${conn?"on":""}"></div><div class="pc-name">${uname}</div></div><div class="pc-body">${body}</div>`;
     grid.appendChild(card);
@@ -757,7 +768,7 @@ async function handleRandomize(){
   const result=await gas("randomize",{user:state.username});
   btn.textContent="\u25BA "+tr("randomize");
   if(result.error){ showToast("Error: "+result.error); btn.disabled=false; }
-  else { showToast(tr("generated")); await poll(); }
+  else { showToast(tr("generated")); USERS.forEach(u=>localStorage.removeItem('hd2_accepted_at_'+u)); await poll(); }
 }
 async function handleVote(){
   if(!state.username){ showToast(tr("select_first")); return; }
