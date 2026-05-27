@@ -53,13 +53,13 @@ html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow
 .btn-user:hover{border-color:var(--yellow);color:var(--yellow)}
 
 /* MODULE GRID */
-.module-grid{flex:1;padding:16px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:10px;overflow:hidden}
-.module-card{background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .15s;padding:16px 10px;position:relative;overflow:hidden}
+.module-grid{flex:1;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow-y:auto;align-content:start}
+.module-card{background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:all .15s;padding:20px 10px;position:relative;overflow:hidden;min-height:200px}
 .module-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--yellow);opacity:0;transition:opacity .15s}
 .module-card:hover{border-color:var(--yellow);background:#1a1800}
 .module-card:hover::before{opacity:1}
 .module-card:active{transform:scale(.98)}
-.module-card img{width:90px;height:90px;object-fit:contain;mix-blend-mode:screen;opacity:.95}
+.module-card img{width:135px;height:135px;object-fit:contain;border-radius:12px;filter:brightness(1.1) contrast(1.05);opacity:1}
 .module-card .mod-name{font-size:12px;font-weight:900;letter-spacing:2px;color:var(--text);text-transform:uppercase;text-align:center}
 .module-card .mod-desc{font-size:9px;color:var(--steel);letter-spacing:1px;text-align:center}
 
@@ -228,7 +228,7 @@ html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow
 
 <!-- SPLASH -->
 <div id="splash" onclick="enterDashboard()">
-  <img src="icon512.png" alt="HD2" onerror="this.style.display='none'"/>
+  <img src="icon512.png" alt="HD2" id="splash-icon" onerror="this.style.opacity='0'"/>
   <h1>Helldivers 2</h1>
   <p>LOADOUT RANDOMIZER</p>
   <div class="splash-hint" id="splash-hint">[ TAP TO ENTER ]</div>
