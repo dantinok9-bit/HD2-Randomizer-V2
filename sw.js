@@ -1,10 +1,10 @@
-const CACHE = "hd2-v4";
+const CACHE = "hd2-v5";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./icon192.png",
-  "./icon512.png",
+  "./icon-192.png",
+  "./icon-512.png",
   "./Randomizer_black.png",
   "./Jumping_Diver.png",
   "./Warbonds.png",
