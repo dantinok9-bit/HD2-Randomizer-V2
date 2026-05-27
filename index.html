@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="theme-color" content="#e7e00d"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -54,12 +54,12 @@ html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow
 
 /* MODULE GRID */
 .module-grid{flex:1;padding:16px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:10px;overflow:hidden}
-.module-card{background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .15s;padding:10px;position:relative;overflow:hidden}
+.module-card{background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:all .15s;padding:16px 10px;position:relative;overflow:hidden}
 .module-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--yellow);opacity:0;transition:opacity .15s}
 .module-card:hover{border-color:var(--yellow);background:#1a1800}
 .module-card:hover::before{opacity:1}
 .module-card:active{transform:scale(.98)}
-.module-card img{width:44px;height:44px;object-fit:contain;mix-blend-mode:screen;opacity:.9}
+.module-card img{width:90px;height:90px;object-fit:contain;mix-blend-mode:screen;opacity:.95}
 .module-card .mod-name{font-size:12px;font-weight:900;letter-spacing:2px;color:var(--text);text-transform:uppercase;text-align:center}
 .module-card .mod-desc{font-size:9px;color:var(--steel);letter-spacing:1px;text-align:center}
 
@@ -179,9 +179,27 @@ html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow
 .classified-sub{font-size:10px;color:var(--steel);letter-spacing:1px}
 
 /* STATISTICS */
-.stats-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:10px}
-.stats-placeholder img{width:64px;opacity:.25;mix-blend-mode:screen}
-.stats-placeholder p{font-size:12px;color:var(--steel);letter-spacing:3px;text-transform:uppercase}
+.stats-body{padding:14px;display:flex;flex-direction:column;gap:14px}
+.stats-card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.stats-card-hdr{background:var(--black);padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.stats-card-title{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--yellow);text-transform:uppercase}
+.stats-card-val{font-size:20px;font-weight:900;color:var(--yellow);font-family:'Share Tech Mono',monospace}
+.stats-card-body{padding:10px 12px}
+.stats-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #222}
+.stats-row:last-child{border-bottom:none}
+.stats-row-label{font-size:11px;color:var(--beige);letter-spacing:.5px}
+.stats-row-val{font-size:11px;color:var(--text);font-family:'Share Tech Mono',monospace;font-weight:700}
+.stats-bar-wrap{display:flex;align-items:center;gap:8px;padding:4px 0}
+.stats-bar-label{font-size:10px;color:var(--beige);width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats-bar-outer{flex:1;height:6px;background:#222;border-radius:3px;overflow:hidden}
+.stats-bar-inner{height:100%;background:var(--yellow);border-radius:3px;transition:width .5s ease}
+.stats-bar-count{font-size:10px;color:var(--steel);font-family:'Share Tech Mono',monospace;width:24px;text-align:right;flex-shrink:0}
+.stats-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats-mini{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:4px;padding:8px 10px}
+.stats-mini-lbl{font-size:8px;color:var(--steel);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.stats-mini-val{font-size:16px;font-weight:900;color:var(--yellow);font-family:'Share Tech Mono',monospace}
+.stats-loading{text-align:center;padding:30px;font-size:11px;color:var(--steel);letter-spacing:2px}
+.stats-error{text-align:center;padding:20px;font-size:11px;color:#ff4444;letter-spacing:1px}
 
 /* USER MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:flex-start;justify-content:flex-end}
@@ -868,7 +886,169 @@ function handleLogout(){
   showToast("Logged out");
 }
 
+
+// ============================================================
+// STATISTICS
+// ============================================================
+async function loadStats(){
+  const container = document.getElementById("stats-content");
+  if(!container) return;
+  container.innerHTML = '<div class="stats-loading">Loading intel from Super Earth...</div>';
+  const result = await gas("getHistory");
+  if(result.error || !result.history){
+    container.innerHTML = '<div class="stats-error">Unable to load statistics — check connection</div>';
+    return;
+  }
+  renderStats(result.history);
+}
+
+function renderStats(history){
+  const container = document.getElementById("stats-content");
+  if(!container) return;
+  if(!history || history.length === 0){
+    container.innerHTML = '<div class="stats-loading">No missions recorded yet</div>';
+    return;
+  }
+
+  // Aggregations
+  const totalLoadouts = history.length;
+  const totalRerolls  = history.reduce((s,r) => s + (parseInt(r.reroll_count)||0), 0);
+  
+  // Faction counts
+  const factionCount = {};
+  history.forEach(r => { factionCount[r.faction] = (factionCount[r.faction]||0)+1; });
+  const factionSorted = Object.entries(factionCount).sort((a,b)=>b[1]-a[1]);
+
+  // Sector counts
+  const sectorCount = {};
+  history.forEach(r => { sectorCount[r.sector] = (sectorCount[r.sector]||0)+1; });
+  const sectorSorted = Object.entries(sectorCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  // Weapon frequency per player
+  const weaponCount = {};
+  history.forEach(r => {
+    for(let i=1;i<=4;i++){
+      const p = r["p"+i+"_primary"];
+      if(p) weaponCount[p] = (weaponCount[p]||0)+1;
+    }
+  });
+  const weaponSorted = Object.entries(weaponCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Difficulty distribution
+  const diffCount = {};
+  history.forEach(r => { const d=String(r.difficulty); diffCount[d]=(diffCount[d]||0)+1; });
+
+  // Average difficulty
+  const avgDiff = history.length > 0
+    ? (history.reduce((s,r)=>s+(parseInt(r.difficulty)||0),0)/history.length).toFixed(1)
+    : "—";
+
+  const maxW = weaponSorted.length > 0 ? weaponSorted[0][1] : 1;
+  const maxS = sectorSorted.length > 0 ? sectorSorted[0][1] : 1;
+
+  container.innerHTML = `
+    <!-- OVERVIEW -->
+    <div class="stats-body">
+    <div class="stats-card">
+      <div class="stats-card-hdr"><span class="stats-card-title">Mission Overview</span></div>
+      <div class="stats-card-body">
+        <div class="stats-grid2">
+          <div class="stats-mini"><div class="stats-mini-lbl">Total Missions</div><div class="stats-mini-val">${totalLoadouts}</div></div>
+          <div class="stats-mini"><div class="stats-mini-lbl">Total Re-Rolls</div><div class="stats-mini-val">${totalRerolls}</div></div>
+          <div class="stats-mini"><div class="stats-mini-lbl">Avg Difficulty</div><div class="stats-mini-val">${avgDiff}</div></div>
+          <div class="stats-mini"><div class="stats-mini-lbl">Most Visited</div><div class="stats-mini-val" style="font-size:11px">${factionSorted[0]?factionSorted[0][0]:"—"}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FACTIONS -->
+    <div class="stats-card">
+      <div class="stats-card-hdr"><span class="stats-card-title">Factions Engaged</span></div>
+      <div class="stats-card-body">
+        ${factionSorted.map(([f,c])=>`
+          <div class="stats-bar-wrap">
+            <div class="stats-bar-label">${f}</div>
+            <div class="stats-bar-outer"><div class="stats-bar-inner" style="width:${Math.round(c/totalLoadouts*100)}%"></div></div>
+            <div class="stats-bar-count">${c}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <!-- SECTORS -->
+    <div class="stats-card">
+      <div class="stats-card-hdr"><span class="stats-card-title">Top Sectors</span></div>
+      <div class="stats-card-body">
+        ${sectorSorted.map(([s,c])=>`
+          <div class="stats-bar-wrap">
+            <div class="stats-bar-label">${s}</div>
+            <div class="stats-bar-outer"><div class="stats-bar-inner" style="width:${Math.round(c/maxS*100)}%"></div></div>
+            <div class="stats-bar-count">${c}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <!-- TOP WEAPONS -->
+    <div class="stats-card">
+      <div class="stats-card-hdr"><span class="stats-card-title">Most Used Primaries</span></div>
+      <div class="stats-card-body">
+        ${weaponSorted.map(([w,c])=>`
+          <div class="stats-bar-wrap">
+            <div class="stats-bar-label">${w}</div>
+            <div class="stats-bar-outer"><div class="stats-bar-inner" style="width:${Math.round(c/maxW*100)}%"></div></div>
+            <div class="stats-bar-count">${c}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+    </div>`;
+}
+
 function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2500); }
 </script>
+
+<script>
+// PWA Install Prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show install banner after 3 seconds if not already installed
+  setTimeout(() => {
+    if (deferredPrompt) showInstallBanner();
+  }, 3000);
+});
+
+function showInstallBanner() {
+  const existing = document.getElementById('install-banner');
+  if (existing) return;
+  const banner = document.createElement('div');
+  banner.id = 'install-banner';
+  banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1a1800;border-top:2px solid #e7e00d;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;z-index:9998;gap:10px;font-family:Barlow Condensed,sans-serif';
+  banner.innerHTML = `
+    <div style="flex:1">
+      <div style="font-size:13px;font-weight:900;letter-spacing:2px;color:#e7e00d;text-transform:uppercase">Install HD2 Randomizer</div>
+      <div style="font-size:10px;color:#ae9f8f;letter-spacing:1px;margin-top:2px">Add to home screen for quick access</div>
+    </div>
+    <button onclick="installApp()" style="padding:8px 16px;background:#e7e00d;border:none;border-radius:4px;font-family:Barlow Condensed,sans-serif;font-size:13px;font-weight:900;letter-spacing:2px;cursor:pointer;color:#0f0f0f;text-transform:uppercase;flex-shrink:0">INSTALL</button>
+    <button onclick="document.getElementById('install-banner').remove()" style="background:transparent;border:1px solid #333;border-radius:3px;color:#62657a;font-size:18px;width:28px;height:28px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">×</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+async function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.remove();
+}
+
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.remove();
+  deferredPrompt = null;
+});
+</script>
+
 </body>
 </html>
