@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#e7e00d"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="HD2 Random"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon192.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<title>HD2 Loadout Randomizer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input,textarea{-webkit-user-select:text;user-select:text}
+:root{--black:#1a1a1a;--yellow:#e7e00d;--red:#601616;--beige:#ae9f8f;--steel:#62657a;--dark:#0f0f0f;--card:#242424;--border:#333;--text:#e8e0cc;}
+html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow Condensed',sans-serif;color:var(--text)}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .5s;cursor:pointer}
+#splash img{width:180px;height:180px;object-fit:cover;border-radius:50%;border:3px solid var(--yellow);margin-bottom:1.2rem}
+#splash h1{font-size:26px;font-weight:900;letter-spacing:4px;color:var(--yellow);text-transform:uppercase;text-align:center}
+#splash p{font-size:12px;color:var(--beige);letter-spacing:3px;margin-top:6px}
+#splash .splash-hint{font-size:11px;color:var(--steel);letter-spacing:2px;margin-top:18px;animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+#splash.hide{opacity:0;pointer-events:none}
+
+/* DASHBOARD */
+#dashboard{position:fixed;inset:0;display:none;flex-direction:column}
+#dashboard.visible{display:flex}
+
+/* TOPBAR */
+.topbar{background:var(--black);border-bottom:2px solid var(--yellow);padding:0 14px;height:38px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{font-size:18px;font-weight:900;letter-spacing:3px;color:var(--yellow)}
+.conn-badge{display:flex;align-items:center;gap:5px;font-size:10px;letter-spacing:1px;padding:3px 8px;border-radius:3px;border:1px solid var(--border)}
+.conn-badge.online{border-color:#44cc44;color:#44cc44;background:#001100}
+.conn-badge.offline{border-color:var(--steel);color:var(--steel);background:#1a1a1a}
+.conn-dot{width:6px;height:6px;border-radius:50%}
+.online .conn-dot{background:#44cc44}
+.offline .conn-dot{background:var(--steel)}
+.topbar-right{display:flex;align-items:center;gap:6px}
+.btn-lang{background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--steel);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:3px 8px;cursor:pointer;transition:all .15s}
+.btn-lang:hover{border-color:var(--yellow);color:var(--yellow)}
+.btn-refresh{background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--steel);font-size:14px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.btn-refresh:hover{border-color:var(--yellow);color:var(--yellow)}
+.btn-refresh.spinning{animation:spin .6s linear}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn-user{font-size:11px;color:var(--beige);letter-spacing:1px;cursor:pointer;padding:3px 8px;border:1px solid var(--border);border-radius:3px;font-family:'Barlow Condensed',sans-serif;font-weight:700;transition:all .15s;text-transform:uppercase;background:transparent}
+.btn-user:hover{border-color:var(--yellow);color:var(--yellow)}
+
+/* MODULE GRID */
+.module-grid{flex:1;padding:16px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:10px;overflow:hidden}
+.module-card{background:var(--card);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .15s;padding:10px;position:relative;overflow:hidden}
+.module-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--yellow);opacity:0;transition:opacity .15s}
+.module-card:hover{border-color:var(--yellow);background:#1a1800}
+.module-card:hover::before{opacity:1}
+.module-card:active{transform:scale(.98)}
+.module-card img{width:44px;height:44px;object-fit:contain;mix-blend-mode:screen;opacity:.9}
+.module-card .mod-name{font-size:12px;font-weight:900;letter-spacing:2px;color:var(--text);text-transform:uppercase;text-align:center}
+.module-card .mod-desc{font-size:9px;color:var(--steel);letter-spacing:1px;text-align:center}
+
+/* PANELS */
+.panel{position:fixed;inset:0;background:var(--dark);display:none;flex-direction:column;z-index:100}
+.panel.visible{display:flex}
+.panel-hdr{background:var(--black);border-bottom:2px solid var(--yellow);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.btn-back{background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--beige);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;padding:5px 10px;cursor:pointer}
+.btn-back:hover{border-color:var(--yellow);color:var(--yellow)}
+.panel-title{font-size:17px;font-weight:900;letter-spacing:3px;color:var(--yellow);text-transform:uppercase}
+.panel-body{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:20px}
+
+/* MISSION BANNER */
+.mission-banner{background:var(--black);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0}
+.mpill{font-size:10px;font-weight:700;letter-spacing:1.5px;padding:3px 8px;border-radius:3px;text-transform:uppercase}
+.pill-diff{background:#2a1500;border:1px solid #805000;color:#ffaa33}
+.pill-sector{background:#001530;border:1px solid #003a7a;color:#66aaff}
+.pill-faction{background:#1a0000;border:1px solid var(--red);color:#ff6666}
+.pill-na{background:#1e1e1e;border:1px solid var(--border);color:var(--steel)}
+.pill-lock{background:#1e1c00;border:1px solid var(--yellow);color:var(--yellow)}
+
+/* PLAYERS GRID */
+.players-grid{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.player-card{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .2s,background .2s;cursor:default}
+.player-card.has-loadout{cursor:pointer}
+.player-card.mine{border-color:var(--yellow)}
+.player-card.accepted{border-color:var(--yellow);background:rgba(231,224,13,.07)}
+.player-card.accepted .pc-hdr{background:rgba(231,224,13,.12)}
+.pc-hdr{background:var(--black);padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;transition:background .2s}
+.pc-dot{width:7px;height:7px;border-radius:50%;background:var(--steel);flex-shrink:0;transition:background .3s}
+.pc-dot.on{background:#44cc44}
+.pc-name{font-size:12px;font-weight:700;letter-spacing:1px;color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.pc-body{padding:8px 10px;position:relative}
+.pc-checkmark{position:absolute;bottom:7px;left:8px;width:20px;height:20px;border-radius:4px;border:2px solid var(--steel);display:flex;align-items:center;justify-content:center;transition:all .2s;background:transparent;font-size:12px}
+.pc-checkmark.checked{border-color:var(--yellow);background:var(--yellow);color:var(--black)}
+.pc-empty{font-size:10px;color:var(--steel);letter-spacing:1px;text-align:center;padding:10px 0}
+.slot-item{margin-bottom:5px}
+.slot-lbl{font-size:8px;color:var(--steel);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:1px}
+.slot-val{font-size:11px;color:var(--text);line-height:1.2;font-family:'Share Tech Mono',monospace}
+.strat-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.strat-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.dot-red{background:#ff4444}.dot-blue{background:#4488ff}.dot-green{background:#44cc44}
+.booster-val{font-size:10px;color:var(--yellow);font-style:italic;line-height:1.2;margin-bottom:18px}
+
+/* BOTTOM BAR */
+.bottom-bar{background:var(--black);border-top:2px solid var(--yellow);padding:8px 14px;flex-shrink:0}
+.vote-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.vote-label{font-size:10px;color:var(--beige);letter-spacing:1px;flex:1}
+.vote-bar{flex:2;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.vote-fill{height:100%;background:var(--yellow);transition:width .3s}
+.btn-row{display:flex;gap:8px}
+.btn-rand{flex:2;padding:11px;background:var(--yellow);border:none;border-radius:5px;color:var(--black);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;letter-spacing:3px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.btn-rand:active{transform:scale(.98)}
+.btn-rand:disabled{opacity:.35;cursor:not-allowed}
+.btn-vote{flex:1;padding:11px;background:transparent;border:1px solid var(--steel);border-radius:5px;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all .15s}
+.btn-vote.voted{border-color:var(--yellow);color:var(--yellow)}
+.btn-vote:disabled{opacity:.35;cursor:not-allowed}
+
+/* USERS PANEL */
+.sec{padding:12px 14px}
+.sec-lbl{font-size:10px;color:var(--beige);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;border-left:2px solid var(--yellow);padding-left:8px}
+.user-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.user-btn{padding:11px 8px;background:var(--card);border:1px solid var(--border);border-radius:5px;color:var(--steel);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .15s}
+.user-btn.active{border-color:var(--yellow);color:var(--yellow);background:#1e1c00}
+.user-btn.taken{border-color:var(--red);color:#ff6666;background:#1a0000;cursor:not-allowed;opacity:.7}
+.wb-sec{padding:0 14px 14px}
+.quick-row{display:flex;gap:6px;margin-bottom:8px}
+.mini-btn{padding:4px 10px;background:var(--card);border:1px solid var(--border);border-radius:3px;color:var(--steel);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer}
+.mini-btn:active{opacity:.7}
+.wb-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.wb-btn{padding:7px 10px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--steel);font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:.5px;cursor:pointer;text-align:left;transition:all .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-btn:hover{border-color:var(--steel);color:var(--text)}
+.wb-btn.active{border-color:var(--yellow);background:#1e1c00;color:var(--yellow)}
+.wb-btn.free{border-color:var(--steel);color:var(--beige);background:#1e1e1e;cursor:default;opacity:.8}
+.btn-save{width:100%;margin:14px 0;padding:13px;background:var(--yellow);border:none;border-radius:5px;color:var(--black);font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;letter-spacing:3px;cursor:pointer;text-transform:uppercase}
+.btn-save:active{opacity:.85}
+.btn-save:disabled{opacity:.4;cursor:not-allowed}
+.save-status{font-size:10px;text-align:center;letter-spacing:1px;height:14px;margin-top:-8px;margin-bottom:4px}
+.save-status.ok{color:#44cc44}.save-status.err{color:#ff4444}.save-status.saving{color:var(--beige)}
+
+/* WARBONDS CATALOG */
+.wb-catalog{display:flex;flex-direction:column;gap:14px;padding:14px}
+.wb-entry{background:var(--card);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.wb-entry-hdr{background:var(--black);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.wb-entry-name{font-size:13px;font-weight:900;letter-spacing:2px;color:var(--yellow);text-transform:uppercase}
+.wb-entry-badge{font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:2px}
+.badge-free{background:#001100;border:1px solid #44cc44;color:#44cc44}
+.badge-premium{background:#1a1500;border:1px solid #805000;color:#ffaa33}
+.badge-legendary{background:#1a0000;border:1px solid var(--red);color:#ff6666}
+.wb-entry-body{padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wb-slot-lbl{font-size:8px;color:var(--steel);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:3px}
+.wb-slot-items{font-size:10px;color:var(--text);line-height:1.7;font-family:'Share Tech Mono',monospace}
+.wb-slot-items span{display:block}
+
+/* FACTION DB */
+.faction-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--black);flex-shrink:0}
+.ftab{flex:1;padding:8px 4px;background:transparent;border:none;border-bottom:3px solid transparent;color:var(--steel);font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;text-transform:uppercase}
+.ftab:hover{color:var(--text)}
+.ftab.active{border-bottom-color:var(--yellow);color:var(--yellow)}
+.faction-content{display:none;padding:12px 14px}
+.faction-content.visible{display:block}
+.fsec-title{font-size:11px;font-weight:900;letter-spacing:2px;color:var(--yellow);text-transform:uppercase;border-left:3px solid var(--yellow);padding-left:8px;margin:16px 0 8px}
+.fsec-title.fungal{color:#88cc44;border-left-color:#88cc44}
+.ftable{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px}
+.ftable th{background:var(--black);color:var(--beige);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.ftable td{padding:7px 8px;border-bottom:1px solid #222;vertical-align:top;line-height:1.4}
+.ftable tr:hover td{background:#1a1a1a}
+.td-unit{color:var(--yellow);font-weight:700;white-space:nowrap}
+.td-behavior{color:var(--text)}
+.td-counter{color:#aad4ff}
+.td-diff{color:#88cc44;font-weight:700}
+.fungal-hdr th{background:#0a1500;color:#88cc44;border-bottom:1px solid #2a4000}
+.fungal-row td{border-bottom:1px solid #1a2a00}
+.fungal-row:hover td{background:#0f1800}
+.classified-box{background:#1a0a00;border:1px solid #4a2000;border-radius:4px;padding:14px;margin:14px 0;text-align:center}
+.classified-title{font-size:13px;font-weight:900;letter-spacing:3px;color:#ff6666;text-transform:uppercase;margin-bottom:6px}
+.classified-sub{font-size:10px;color:var(--steel);letter-spacing:1px}
+
+/* STATISTICS */
+.stats-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:10px}
+.stats-placeholder img{width:64px;opacity:.25;mix-blend-mode:screen}
+.stats-placeholder p{font-size:12px;color:var(--steel);letter-spacing:3px;text-transform:uppercase}
+
+/* USER MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:flex-start;justify-content:flex-end}
+.modal-overlay.visible{display:flex}
+.user-modal{margin-top:38px;margin-right:0;width:280px;background:#111;border:1px solid rgba(231,224,13,.35);border-top:none;animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.modal-hdr{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.modal-avatar{width:34px;height:34px;border-radius:50%;background:rgba(231,224,13,.1);border:1px solid rgba(231,224,13,.35);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:var(--yellow);flex-shrink:0}
+.modal-uname{font-size:12px;font-weight:700;color:var(--yellow);letter-spacing:.1em;text-transform:uppercase}
+.modal-rank{font-size:10px;color:var(--steel);margin-top:2px}
+.modal-section{padding:10px 16px;border-bottom:1px solid var(--border)}
+.modal-section-lbl{font-size:9px;letter-spacing:.18em;color:var(--steel);text-transform:uppercase;margin-bottom:6px}
+.modal-wb-list{max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.modal-wb-item{font-size:11px;color:#aaa;display:flex;align-items:center;gap:6px;letter-spacing:.5px}
+.modal-wb-dot{width:4px;height:4px;border-radius:50%;background:var(--yellow);opacity:.6;flex-shrink:0}
+.modal-footer{padding:10px 16px}
+.btn-logout{width:100%;padding:8px;background:transparent;border:1px solid var(--red);border-radius:3px;color:#ff6666;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:background .2s}
+.btn-logout:hover{background:rgba(96,22,22,.3)}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--yellow);color:var(--black);font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:900;letter-spacing:2px;padding:8px 18px;border-radius:4px;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash" onclick="enterDashboard()">
+  <img src="icon512.png" alt="HD2" onerror="this.style.display='none'"/>
+  <h1>Helldivers 2</h1>
+  <p>LOADOUT RANDOMIZER</p>
+  <div class="splash-hint" id="splash-hint">[ TAP TO ENTER ]</div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">HD2</div>
+      <div class="conn-badge offline" id="conn-badge">
+        <div class="conn-dot"></div>
+        <span id="conn-text">OFFLINE</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-lang" id="btn-lang" onclick="toggleLang()">ES</button>
+      <button class="btn-refresh" id="btn-refresh" onclick="manualRefresh()" title="Refresh">&#8635;</button>
+      <button class="btn-user" id="btn-user" onclick="toggleUserModal()">SELECT USER</button>
+    </div>
+  </div>
+  <div class="module-grid">
+    <div class="module-card" onclick="openPanel('randomizer')">
+      <img src="Randomizer_black.png" alt="Randomizer" onerror="this.style.display='none'"/>
+      <div class="mod-name">Randomizer</div>
+      <div class="mod-desc" id="desc-randomizer">Generate squad loadout</div>
+    </div>
+    <div class="module-card" onclick="openPanel('users')">
+      <img src="Jumping_Diver.png" alt="Users" onerror="this.style.display='none'"/>
+      <div class="mod-name" id="modname-users">Users</div>
+      <div class="mod-desc" id="desc-users">Select player &amp; warbonds</div>
+    </div>
+    <div class="module-card" onclick="openPanel('warbonds')">
+      <img src="Warbonds.png" alt="Warbonds" onerror="this.style.display='none'"/>
+      <div class="mod-name">Warbonds</div>
+      <div class="mod-desc" id="desc-warbonds">Full catalog &middot; 23 warbonds</div>
+    </div>
+    <div class="module-card" onclick="openPanel('factions')">
+      <img src="Factions.png" alt="Faction DB" onerror="this.style.display='none'"/>
+      <div class="mod-name" id="modname-factions">Faction DB</div>
+      <div class="mod-desc" id="desc-factions">Enemy intel &amp; counters</div>
+    </div>
+    <div class="module-card" onclick="openPanel('stats')" style="grid-column:1/-1">
+      <img src="Statistics.png" alt="Statistics" onerror="this.style.display='none'"/>
+      <div class="mod-name" id="modname-stats">Statistics</div>
+      <div class="mod-desc" id="desc-stats">History &middot; combinations &middot; metrics</div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: RANDOMIZER -->
+<div class="panel" id="panel-randomizer">
+  <div class="panel-hdr">
+    <button class="btn-back" onclick="closePanel('randomizer')" id="back-randomizer">&#8592; BACK</button>
+    <span class="panel-title">Randomizer</span>
+  </div>
+  <div class="mission-banner" id="mission-banner">
+    <span class="mpill pill-na" id="no-mission-pill">No active mission</span>
+  </div>
+  <div class="panel-body">
+    <div class="players-grid" id="players-grid">
+      <div style="grid-column:1/-1;text-align:center;padding:30px;font-size:12px;color:var(--steel);letter-spacing:2px" id="connecting-msg">
+        Connecting to Super Earth...
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <div class="vote-row">
+      <span class="vote-label" id="vote-label">Re-roll: waiting for votes</span>
+      <div class="vote-bar"><div class="vote-fill" id="vote-fill" style="width:0%"></div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-rand" id="btn-rand" onclick="handleRandomize()" disabled>&#9654; RANDOMIZE</button>
+      <button class="btn-vote" id="btn-vote" onclick="handleVote()" disabled>RE-ROLL</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: USERS -->
+<div class="panel" id="panel-users">
+  <div class="panel-hdr">
+    <button class="btn-back" onclick="closePanel('users')" id="back-users">&#8592; BACK</button>
+    <span class="panel-title" id="title-users">Users</span>
+  </div>
+  <div class="panel-body">
+    <div class="sec">
+      <div class="sec-lbl" id="lbl-select-user">Select user</div>
+      <div class="user-grid" id="user-btns"></div>
+      <div class="sec-lbl" id="lbl-warbonds">Available warbonds</div>
+      <div class="quick-row">
+        <button class="mini-btn" onclick="selectAllWB(true)" id="btn-all">+ ALL</button>
+        <button class="mini-btn" onclick="selectAllWB(false)" id="btn-none">- NONE</button>
+      </div>
+    </div>
+    <div class="wb-sec">
+      <div class="wb-grid" id="wb-grid"></div>
+      <div class="save-status" id="save-status"></div>
+      <button class="btn-save" id="btn-save" onclick="saveConfig()">SAVE &amp; BACK</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: WARBONDS CATALOG -->
+<div class="panel" id="panel-warbonds">
+  <div class="panel-hdr">
+    <button class="btn-back" onclick="closePanel('warbonds')">&#8592; BACK</button>
+    <span class="panel-title">Warbonds</span>
+  </div>
+  <div class="panel-body">
+    <div class="wb-catalog" id="wb-catalog"></div>
+  </div>
+</div>
+
+<!-- PANEL: FACTION DATABASE -->
+<div class="panel" id="panel-factions">
+  <div class="panel-hdr">
+    <button class="btn-back" onclick="closePanel('factions')">&#8592; BACK</button>
+    <span class="panel-title" id="title-factions">Faction DB</span>
+  </div>
+  <div class="faction-tabs">
+    <button class="ftab active" onclick="switchFaction('terminids',this)">TERMINIDS</button>
+    <button class="ftab" onclick="switchFaction('automatons',this)">AUTOMATONS</button>
+    <button class="ftab" onclick="switchFaction('illuminate',this)">ILLUMINATE</button>
+    <button class="ftab" onclick="switchFaction('cyborgs',this)">CYBORGS</button>
+  </div>
+  <div class="panel-body">
+
+    <!-- TERMINIDS -->
+    <div class="faction-content visible" id="fc-terminids">
+      <div class="fsec-title">Standard Spawns by Difficulty</div>
+      <table class="ftable">
+        <thead><tr><th>Difficulty</th><th>Normal Spawns</th><th>Upsurge Variants</th><th>Best Counters</th></tr></thead>
+        <tbody>
+          <tr><td class="td-unit">Low (1-3)</td><td class="td-behavior">Scavengers, Warriors, Pouncers, Hunters</td><td class="td-behavior">Hunters, Pouncers (massive swarms), Hive Guards</td><td class="td-counter">Primary: SG-225 Breaker / Breaker Incendiary &middot; Support: MG-43 / Stalwart &middot; Strat: Eagle Cluster Bomb</td></tr>
+          <tr><td class="td-unit">Medium (4-5)</td><td class="td-behavior">Hive Guards, Spewers, Brood Commanders, Chargers, Stalkers</td><td class="td-behavior">Alpha Commanders, Alpha Warriors, Chargers, Bile Spewers</td><td class="td-counter">Primary: SG-225IE / Jar-5 Dominator &middot; Support: EAT-17 / Flamethrower / GL &middot; Strat: Orbital Gas Strike</td></tr>
+          <tr><td class="td-unit">High (6-10)</td><td class="td-behavior">Bile Titans, Impalers, Charger Behemoths, Spore Chargers</td><td class="td-behavior">Bile Titans (multiple), Impalers, Charger Behemoths, Spore Chargers</td><td class="td-counter">Primary: SG-225IE / Blitzer &middot; Support: Recoilless / Quasar / Spear &middot; Strat: Orbital Precision / Eagle 500kg</td></tr>
+        </tbody>
+      </table>
+      <div class="fsec-title fungal">Fungal Strain &mdash; Spore Variants</div>
+      <table class="ftable">
+        <thead class="fungal-hdr"><tr><th>Difficulty</th><th>New Spawns</th><th>Fungal Behavior</th><th>Recommended Equipment</th></tr></thead>
+        <tbody>
+          <tr class="fungal-row"><td class="td-diff">Med/Challenging/Hard (3-5)</td><td class="td-behavior">Spore Scavengers</td><td class="td-behavior">Fungal variants guard small/medium nests. Death clouds release spores but Frenzy effect is minimal at low density.</td><td class="td-counter">SG-225 Breaker / Liberator for range clearing &middot; Light damage stratagems</td></tr>
+          <tr class="fungal-row"><td class="td-diff">Extreme / Suicide Mission (6-7)</td><td class="td-behavior">Spore Hunters</td><td class="td-behavior">Recon patrols include 2-4 Spore Hunters. High speed &mdash; explode near Helldivers. Bug Breaches trigger Frenzy on medium enemies (Brood Commanders).</td><td class="td-counter">SG-225IE Incendiary Breaker / Sterilizer (fire/gas dissipates toxin on kill) &middot; Impact grenades for quick group clear</td></tr>
+          <tr class="fungal-row"><td class="td-diff">Impossible / Helldive (8-9)</td><td class="td-behavior">Spore Titan (replaces Bile Titan)</td><td class="td-behavior">Spore clouds from dead infantry Frenzy Chargers and Behemoths &mdash; doubles charge speed. Spore Titan has massive HP and ragdoll-inducing bile.</td><td class="td-counter">Anti-tank: FAF-14 Spear / EXO-51 Lumberer (90mm) &middot; Gas-resistant armor &middot; Stun Grenades</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- AUTOMATONS -->
+    <div class="faction-content" id="fc-automatons">
+      <div class="fsec-title">Standard Spawns by Difficulty</div>
+      <table class="ftable">
+        <thead><tr><th>Difficulty</th><th>Normal Spawns</th><th>Upsurge Variants</th><th>Best Counters</th></tr></thead>
+        <tbody>
+          <tr><td class="td-unit">Low (1-3)</td><td class="td-behavior">Troopers, Raiders, Commissars, Scout Striders</td><td class="td-behavior">Commissars (high density), Berserkers (replacing infantry)</td><td class="td-counter">Primary: BR-14 Adjudicator / Diligence Counter Sniper &middot; Support: APW-1 Anti-Materiel / Laser Cannon &middot; Strat: Eagle Airstrike</td></tr>
+          <tr><td class="td-unit">Medium (4-5)</td><td class="td-behavior">Berserkers, Devastators (Standard, Rocket, Heavy)</td><td class="td-behavior">Heavy Devastators, Rocket Devastators, Hulks</td><td class="td-counter">Primary: Jar-5 Dominator / PLAS-1 Scorcher &middot; Support: Autocannon / Railgun / AMR &middot; Strat: Orbital Railcannon Strike / Eagle Airstrike</td></tr>
+          <tr><td class="td-unit">High (6-10)</td><td class="td-behavior">Hulks, Factory Striders, Gunships, Annihilator/Barrager Tanks</td><td class="td-behavior">Factory Striders (roaming), Barrager Tanks, Annihilator Tanks, Hulks</td><td class="td-counter">Primary: PLAS-1 Scorcher / R-36 Eruptor &middot; Support: Autocannon / Spear / HMG &middot; Strat: Orbital Laser / 380mm Barrage</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ILLUMINATE -->
+    <div class="faction-content" id="fc-illuminate">
+      <div class="fsec-title">Standard Spawns by Difficulty</div>
+      <table class="ftable">
+        <thead><tr><th>Difficulty</th><th>Normal Spawns</th><th>Upsurge Variants</th><th>Best Counters</th></tr></thead>
+        <tbody>
+          <tr><td class="td-unit">Low (1-3)</td><td class="td-behavior">Voteless (Light/Medium), Watchers</td><td class="td-behavior">Voteless Slayers (swarms), Obtruders (teleporting variants)</td><td class="td-counter">Primary: Double-Edged Sickle / Breaker variants &middot; Support: M-105 Stalwart / Guard Dog Rover &middot; Strat: Gatling Sentry / Orbital Gas Strike</td></tr>
+          <tr><td class="td-unit">Medium (4-5)</td><td class="td-behavior">Voteless (Heavy), Overseers, Interlopers, Stingrays</td><td class="td-behavior">Flesh Mobs (massive melee pressure), Crescent Overseers, Stingrays (strafing jet fighters)</td><td class="td-counter">Primary: Coyote Rifle / Jar-5 Dominator &middot; Support: MG-43 / Laser Cannon &middot; Strat: Eagle Napalm / Orbital Precision Strike</td></tr>
+          <tr><td class="td-unit">High (6-10)</td><td class="td-behavior">Elevated Overseers, Harvesters, Piloted Constructs (Veracitor, Gatekeeper)</td><td class="td-behavior">Harvesters (giant walkers), Flesh Mobs (unending waves), Veracitor, Gatekeeper</td><td class="td-counter">Primary: Ultimatum / PLAS-1 Scorcher &middot; Support: Quasar / HMG / Heavy Grenades &middot; Strat: Orbital Napalm / Tesla Tower / Bubble Shield</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CYBORGS -->
+    <div class="faction-content" id="fc-cyborgs">
+      <div class="fsec-title">1. Recon &amp; Light Infantry</div>
+      <table class="ftable">
+        <thead><tr><th>Unit / Variant</th><th>Behavior &amp; Spawns</th><th>Weaknesses / Counters</th></tr></thead>
+        <tbody>
+          <tr><td class="td-unit">Squadleader / Soldier</td><td class="td-behavior">Basic infantry with semi-auto rifles. Patrol in groups of 4-5. Attempt to alert immediately upon spotting a Helldiver.</td><td class="td-counter">Any primary. Fast crowd control like SG-225 Breaker or assault rifles clear the patrol before the flare fires.</td></tr>
+          <tr><td class="td-unit">Legionnaire</td><td class="td-behavior">Light-heavy infantry variant equipped with heavy ballistic shield on one arm and SMG on the other.</td><td class="td-counter">Medium-armor penetration or explosive damage. JAR-5 Dominator or R-36 Eruptor staggers the shield. Aim at feet or exposed arm with light weapons.</td></tr>
+          <tr><td class="td-unit">Cyborg Hound</td><td class="td-behavior">Cybernetic dogs assaulting in packs at high speed. Sole purpose: knock down, destabilize and cut off Helldiver retreat.</td><td class="td-counter">High fire rate or AoE. G-23 Stun Grenade stops them cold. Scythe or auto-shotguns dispatch them before jump range.</td></tr>
+        </tbody>
+      </table>
+      <div class="fsec-title">2. Heavy Infantry &amp; Elites</div>
+      <table class="ftable">
+        <thead><tr><th>Unit / Variant</th><th>Behavior &amp; Spawns</th><th>Weaknesses / Counters</th></tr></thead>
+        <tbody>
+          <tr><td class="td-unit">Grotesque</td><td class="td-behavior">Failed bionic experiments with cybernetic implants. Attack purely melee in massive swarms during alerts.</td><td class="td-counter">Crowd control (Stagger/Slow). SG-8 Punisher or SG-72 Pummeler keep them at bay. Sustained MG fire (MG-94 / Stalwart) is extremely effective.</td></tr>
+          <tr><td class="td-unit">Butcher</td><td class="td-behavior">Giants of mutilated flesh with chainsaw arms. Absurd torso HP. Advance implacably regardless of incoming damage.</td><td class="td-counter">Concentrated fire to the head or plasma weapons. SG-8P Punisher Plasma interrupts advance. Diligence Counter Sniper eliminates quickly at range.</td></tr>
+        </tbody>
+      </table>
+      <div class="fsec-title">3. Armored &amp; Siege Units</div>
+      <table class="ftable">
+        <thead><tr><th>Unit / Variant</th><th>Behavior &amp; Spawns</th><th>Weaknesses / Counters</th></tr></thead>
+        <tbody>
+          <tr><td class="td-unit">Hulk (Cyborg Classic)</td><td class="td-behavior">Precursor to the Automaton Hulk. Heavy cannon on one arm, saw/claw on the other. Full frontal armor.</td><td class="td-counter">Rear weak points. Bright rear vent vulnerable to light/medium arms. Frontally requires EAT-17, Recoilless Rifle or Autocannon to the eye port.</td></tr>
+          <tr><td class="td-unit">IFV (Infantry Fighting Vehicle)</td><td class="td-behavior">Tracked armored vehicle acting as mobile spawn point. Fires heavy fragmentation cannon at range and continuously deploys Grotesque squads if not destroyed.</td><td class="td-counter">Heavy anti-tank mandatory. No rear weak points. Requires RL-112 Recoilless Rifle, EAT-17 or orbital/eagle demolition stratagems.</td></tr>
+          <tr><td class="td-unit">Warlord</td><td class="td-behavior">Pinnacle of Cyborg infantry. Walking tank with dual automatic cannon and heavy shield. Suppresses Helldivers at hundreds of meters.</td><td class="td-counter">Heavy precision. Similar to Hulk but slower. Autocannon bursts or AT rifle impact to the joints or vision slit incapacitates it.</td></tr>
+        </tbody>
+      </table>
+      <div class="classified-box">
+        <div class="classified-title">&#9888; SECTOR DATA &mdash; CYBERSTAN / EASTERN OUTER RIM</div>
+        <div class="classified-sub">Additional field intelligence pending. Report all encounters to High Command.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PANEL: STATISTICS -->
+<div class="panel" id="panel-stats">
+  <div class="panel-hdr">
+    <button class="btn-back" onclick="closePanel('stats')">&#8592; BACK</button>
+    <span class="panel-title" id="title-stats">Statistics</span>
+  </div>
+  <div class="panel-body">
+    <div class="stats-placeholder">
+      <img src="Statistics.png" alt="Statistics" onerror="this.style.display='none'"/>
+      <p id="coming-soon-txt">COMING SOON</p>
+    </div>
+  </div>
+</div>
+
+<!-- USER MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="user-modal" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <div class="modal-avatar" id="modal-avatar">--</div>
+      <div>
+        <div class="modal-uname" id="modal-uname">NOT SELECTED</div>
+        <div class="modal-rank">Helldiver</div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-lbl" id="modal-wb-lbl">Active Warbonds</div>
+      <div class="modal-wb-list" id="modal-wb-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-logout" id="btn-logout" onclick="handleLogout()">&#9211; &nbsp; LOG OUT</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxfd1_TthUbKyBxCdDXrnPu2uBzYPv0qfIgO6vZwySI0tQ6qDEJVa7iHsBDk0HSYWby/exec";
+const TOKEN   = "HD2_SUPER_EARTH_2026";
+
+// i18n
+const LANG = {
+  en:{
+    mod_users:"Users",mod_factions:"Faction DB",mod_stats:"Statistics",
+    desc_randomizer:"Generate squad loadout",desc_users:"Select player & warbonds",
+    desc_warbonds:"Full catalog \u00b7 23 warbonds",desc_factions:"Enemy intel & counters",
+    desc_stats:"History \u00b7 combinations \u00b7 metrics",
+    back:"BACK",randomize:"RANDOMIZE",no_mission:"No active mission",
+    connecting:"Connecting to Super Earth...",select_user:"Select user",
+    avail_wb:"Available warbonds",all_btn:"+ ALL",none_btn:"- NONE",save_back:"SAVE & BACK",
+    wb_lbl:"Active Warbonds",logout:"LOG OUT",coming_soon:"COMING SOON",
+    saving:"Saving...",saved:"\u2713 Saved",err_save:"Save error: ",
+    welcome:"Welcome, ",select_first:"Select a user first",
+    generated:"LOADOUT GENERATED!",generating:"GENERATING...",
+    voted:"VOTED \u2713",reroll_fmt:"Re-roll: {v}/{n} votes ({c} connected)",
+    locked_btn:"\uD83D\uDD12 LOCKED",locked_reroll:"\uD83D\uDD12 RE-ROLL",
+  },
+  es:{
+    mod_users:"Usuarios",mod_factions:"Facciones",mod_stats:"Estad\xEDsticas",
+    desc_randomizer:"Genera loadout del escuadr\xF3n",desc_users:"Seleccionar jugador y warbonds",
+    desc_warbonds:"Cat\xE1logo completo \u00b7 23 warbonds",desc_factions:"Intel de enemigos y contras",
+    desc_stats:"Historial \u00b7 combinaciones \u00b7 m\xE9tricas",
+    back:"VOLVER",randomize:"RANDOMIZAR",no_mission:"Sin misi\xF3n activa",
+    connecting:"Conectando con Super Tierra...",select_user:"Seleccionar usuario",
+    avail_wb:"Warbonds disponibles",all_btn:"+ TODOS",none_btn:"- NINGUNO",save_back:"GUARDAR Y VOLVER",
+    wb_lbl:"Warbonds activos",logout:"CERRAR SESI\xD3N",coming_soon:"PR\xD3XIMAMENTE",
+    saving:"Guardando...",saved:"\u2713 Guardado",err_save:"Error: ",
+    welcome:"Bienvenido, ",select_first:"Selecciona un usuario primero",
+    generated:"\xA1LOADOUT GENERADO!",generating:"GENERANDO...",
+    voted:"VOTADO \u2713",reroll_fmt:"Re-roll: {v}/{n} votos ({c} conectados)",
+    locked_btn:"\uD83D\uDD12 BLOQUEADO",locked_reroll:"\uD83D\uDD12 RE-ROLL",
+  }
+};
+let lang = "en";
+function tr(k,vars={}){
+  let s=(LANG[lang]||LANG.en)[k]||k;
+  Object.keys(vars).forEach(v=>s=s.replace("{"+v+"}",vars[v]));
+  return s;
+}
+function applyLang(){
+  document.getElementById("btn-lang").textContent = lang==="en"?"ES":"EN";
+  document.getElementById("splash-hint").textContent = lang==="en"?"[ TAP TO ENTER ]":"[ TOCA PARA ENTRAR ]";
+  document.getElementById("modname-users").textContent = tr("mod_users");
+  document.getElementById("modname-factions").textContent = tr("mod_factions");
+  document.getElementById("modname-stats").textContent = tr("mod_stats");
+  document.getElementById("desc-randomizer").textContent = tr("desc_randomizer");
+  document.getElementById("desc-users").textContent = tr("desc_users");
+  document.getElementById("desc-warbonds").textContent = tr("desc_warbonds");
+  document.getElementById("desc-factions").textContent = tr("desc_factions");
+  document.getElementById("desc-stats").textContent = tr("desc_stats");
+  document.getElementById("back-randomizer").innerHTML = "&#8592; "+tr("back");
+  document.getElementById("back-users").innerHTML = "&#8592; "+tr("back");
+  document.getElementById("title-users").textContent = tr("mod_users");
+  document.getElementById("title-factions").textContent = tr("mod_factions");
+  document.getElementById("title-stats").textContent = tr("mod_stats");
+  document.getElementById("lbl-select-user").textContent = tr("select_user");
+  document.getElementById("lbl-warbonds").textContent = tr("avail_wb");
+  document.getElementById("btn-all").textContent = tr("all_btn");
+  document.getElementById("btn-none").textContent = tr("none_btn");
+  document.getElementById("btn-save").textContent = tr("save_back");
+  document.getElementById("modal-wb-lbl").textContent = tr("wb_lbl");
+  document.getElementById("btn-logout").innerHTML = "&#9211; &nbsp;" + tr("logout");
+  document.getElementById("coming-soon-txt").textContent = tr("coming_soon");
+  document.getElementById("no-mission-pill").textContent = tr("no_mission");
+  document.getElementById("connecting-msg").textContent = tr("connecting");
+  document.getElementById("btn-user").textContent = state.username ? state.username.toUpperCase() : tr("select_user").toUpperCase();
+}
+function toggleLang(){
+  lang = lang==="en"?"es":"en";
+  applyLang();
+  if(state.currentState) renderRandomizer(state.currentState);
+  renderModalWarbonds();
+}
+
+const USERS = ["Furiass01","Janio Matador","Panutch","AVGVSTVS ATROX"];
+const WARBONDS = [
+  {id:"mobilize",name:"Helldivers Mobilize",free:true},
+  {id:"steeled",name:"Steeled Veterans"},{id:"democratic",name:"Democratic Detonation"},
+  {id:"cutting",name:"Cutting Edge"},{id:"polar",name:"Polar Patriots"},
+  {id:"viper",name:"Viper Commandos"},{id:"truth",name:"Truth Enforcers"},
+  {id:"freedom_flame",name:"Freedom's Flame"},{id:"chemical",name:"Chemical Agents"},
+  {id:"servants",name:"Servants of Freedom"},{id:"borderline",name:"Borderline Justice"},
+  {id:"force",name:"Force of Law"},{id:"masters",name:"Masters of Ceremony"},
+  {id:"urban",name:"Urban Legends"},{id:"control",name:"Control Group"},
+  {id:"dust",name:"Dust Devils"},{id:"python",name:"Python Commandos"},
+  {id:"redacted",name:"Redacted Regiment"},{id:"siege",name:"Siege Breakers"},
+  {id:"righteous",name:"Righteous Revenants"},{id:"odst",name:"Halo: ODST"},
+  {id:"entrenched",name:"Entrenched Division"},{id:"exo",name:"Exo Experts"},
+];
+const DIFF_NAMES = ["","Trivial","Easy","Medium","Challenging","Hard","Extreme","Suicide Mission","Impossible","Helldive","Super Helldive"];
+
+const WB_CATALOG = [
+  {id:"mobilize",type:"free",primaries:["SG-225 Breaker","AR-23 Liberator","SG-8 Punisher","R-63 Diligence","LAS-5 Scythe"],secondaries:["P-2 Peacemaker","P-19 Redeemer"],grenades:["G-12 High Explosive","G-6 Frag","G-16 Impact"],stratagems:["Eagle Airstrike","Orbital Precision Strike","Resupply","Reinforce","SOS Beacon","Eagle Strafing Run","Orbital Gatling Barrage"],boosters:["Vitality Enhancement","Stamina Enhancement","Muscle Enhancement"]},
+  {id:"steeled",type:"premium",primaries:["AR-23P Liberator Penetrator","SG-225SP Breaker Spray&Pray","JAR-5 Dominator"],secondaries:["P-4 Senator"],grenades:["G-3 Smoke"],stratagems:["MG-43 Machine Gun","B-1 Supply Pack","A/MG-43 Machine Gun Sentry"],boosters:["Experimental Infusion","Unflinching"]},
+  {id:"democratic",type:"premium",primaries:["CB-9 Exploding Crossbow","R-36 Eruptor","SG-8P Punisher Plasma"],secondaries:["GP-31 Grenade Pistol"],grenades:["G-123 Thermite","G-13 Incendiary Impact"],stratagems:["AC-8 Autocannon","GL-21 Grenade Launcher","EAT-17 Anti-Tank"],boosters:["Expert Extraction Pilot","Localization Confusion"]},
+  {id:"cutting",type:"premium",primaries:["LAS-16 Sickle","SG-8S Slugger","PLAS-1 Scorcher"],secondaries:["LAS-7 Dagger","P-72 Crisper"],grenades:["G-23 Stun","K-2 Throwing Knife"],stratagems:["LAS-99 Quasar Cannon","PLAS-89 Liberator Electric","SH-32 Shield Pack"],boosters:["Reduced Recoil","System Purge"]},
+  {id:"polar",type:"premium",primaries:["AR-61 Tenderizer","BR-14 Adjudicator","R-63CS Diligence Counter Sniper"],secondaries:["P-113 Verdict"],grenades:["G-10 Incendiary"],stratagems:["APW-1 Anti-Materiel Rifle","MG-206 Heavy Machine Gun","FX-12 Shield Generator Relay"],boosters:["Hellpod Space Optimization","Flexible Reinforcement Budget"]},
+  {id:"viper",type:"premium",primaries:["MP-98 Knight","AR-23A Liberator Carbine","SG-20 Halt"],secondaries:["SG-22 Bushwhacker"],grenades:["G-50 Stun Grenade"],stratagems:["M-105 Stalwart","LIFT-850 Jump Pack","AX/AR-23 Guard Dog"],boosters:["Motivational Shocks","Zero-G Specialist"]},
+  {id:"truth",type:"premium",primaries:["PLAS-101 Purifier","SMG-72 Pummeler","SG-225IE Breaker Incendiary"],secondaries:["StA-53 Stim Pistol"],grenades:["G-4 Gas Grenade"],stratagems:["StA-X3 W.A.S.P. Launcher","MD-6 Anti-Personnel Minefield","AX/LAS-5 Guard Dog Rover"],boosters:["Elder Scroll","UAV Recon Booster"]},
+  {id:"freedom_flame",type:"premium",primaries:["FLAM-66 Torcher","SG-451 Cookout","AR-23C Liberator Concussive"],secondaries:["P-11 Stun Lance"],grenades:["G-142 Smoke Impact"],stratagems:["FLAM-40 Flamethrower","AX/FLAM-75 Guard Dog Hot Dog","OG-95 Guard Dog Smoke"],boosters:["Increased Reinforcement Budget","Donation Access License"]},
+  {id:"chemical",type:"premium",primaries:["TX-41 Sterilizer","P-72 Crisper","StA-11 SMG"],secondaries:["P-72 Crisper"],grenades:["G-4 Gas Grenade","G-142 Smoke Impact"],stratagems:["SH-51 Directional Shield","AX/TX-13 Guard Dog Dog Breath","Orbital Gas Strike"],boosters:["Nerve-Woven Concoction","Experimental Infusion"]},
+  {id:"servants",type:"premium",primaries:["AR-23 Liberator","LAS-16 Sickle","SMG-37 Defender"],secondaries:["P-2 Peacemaker"],grenades:["G-12 High Explosive"],stratagems:["Orbital Railcannon Strike","GR-8 Recoilless Rifle","EXO-45 Patriot Exosuit"],boosters:["Democracy Protects","Flexible Reinforcement Budget"]},
+  {id:"borderline",type:"premium",primaries:["PLAS-1 Scorcher","JAR-5 Dominator","BR-14 Adjudicator"],secondaries:["GP-31 Grenade Pistol"],grenades:["G-123 Thermite"],stratagems:["RL-77 Airburst Rocket Launcher","Orbital Airburst Strike","380mm HB Mortar Barrage"],boosters:["Expert Extraction Pilot","Motivational Shocks"]},
+  {id:"force",type:"premium",primaries:["SG-225 Breaker","AR-61 Tenderizer","MP-98 Knight"],secondaries:["P-113 Verdict","SG-22 Bushwhacker"],grenades:["G-23 Stun","G-3 Smoke"],stratagems:["MD-17 Anti-Tank Mines","TX-41 Sterilizer","ARC-3 Arc Thrower"],boosters:["Humanitarian Aid","Unflinching"]},
+  {id:"masters",type:"premium",primaries:["SMG-203 Gallant","R-36 Eruptor","SG-8 Punisher"],secondaries:["P-4 Senator"],grenades:["G-16 Impact","G-6 Frag"],stratagems:["EXO-49 Emancipator Exosuit","AC-8 Autocannon","MG-206 Heavy Machine Gun"],boosters:["Reduced Recoil","UAV Recon Booster"]},
+  {id:"urban",type:"premium",primaries:["SG-8S Slugger","MP-98 Knight","LAS-16 Sickle"],secondaries:["P-113 Verdict"],grenades:["G-10 Incendiary","G-50 Stun"],stratagems:["TX-41 Sterilizer","AX/ARC-3 Guard Dog K-9","MD-6 Anti-Personnel Minefield"],boosters:["Nerve-Woven Concoction","System Purge"]},
+  {id:"control",type:"premium",primaries:["SG-20 Halt","CB-9 Crossbow","PLAS-101 Purifier"],secondaries:["StA-53 Stim Pistol","P-72 Crisper"],grenades:["K-2 Throwing Knife"],stratagems:["PLAS-89 Liberator Electric","SH-20 Ballistic Shield","FX-12 Shield Generator Relay"],boosters:["Zero-G Specialist","Hellpod Space Optimization"]},
+  {id:"dust",type:"premium",primaries:["SG-225 Breaker","AR-23 Liberator","R-63 Diligence"],secondaries:["P-2 Peacemaker"],grenades:["G-12 High Explosive"],stratagems:["Eagle Cluster Bomb","MG-43 Machine Gun","EAT-17 Anti-Tank"],boosters:["Stamina Enhancement","Muscle Enhancement"]},
+  {id:"python",type:"premium",primaries:["SMG-37 Defender","BR-14 Adjudicator","SG-8P Punisher Plasma"],secondaries:["GP-31 Grenade Pistol"],grenades:["G-4 Gas Grenade","G-123 Thermite"],stratagems:["RL-77 Airburst","GR-8 Recoilless Rifle","Orbital Gas Strike"],boosters:["Expert Extraction Pilot","Democracy Protects"]},
+  {id:"redacted",type:"premium",primaries:["PLAS-1 Scorcher","LAS-99 Quasar Cannon","R-36 Eruptor"],secondaries:["LAS-7 Dagger"],grenades:["G-23 Stun","G-16 Impact"],stratagems:["Orbital Laser","380mm HB Mortar Barrage","SH-32 Shield Pack"],boosters:["Localization Confusion","Experimental Infusion"]},
+  {id:"siege",type:"premium",primaries:["AR-61 Tenderizer","SG-451 Cookout","MP-98 Knight"],secondaries:["SG-22 Bushwhacker"],grenades:["G-10 Incendiary"],stratagems:["FLAM-40 Flamethrower","AC-8 Autocannon","MD-17 Anti-Tank Mines"],boosters:["Donation Access License","Increased Reinforcement Budget"]},
+  {id:"righteous",type:"legendary",primaries:["SG-20 Halt","PLAS-101 Purifier","SMG-72 Pummeler"],secondaries:["P-11 Stun Lance"],grenades:["G-3 Smoke","G-142 Smoke Impact"],stratagems:["EXO-45 Patriot Exosuit","EXO-49 Emancipator Exosuit","OG-95 Guard Dog Smoke"],boosters:["Humanitarian Aid","Flexible Reinforcement Budget"]},
+  {id:"odst",type:"legendary",primaries:["SMG-203 Gallant","BR-14 Adjudicator","AR-23C Liberator Concussive"],secondaries:["P-113 Verdict"],grenades:["G-50 Stun","G-6 Frag"],stratagems:["LIFT-850 Jump Pack","B-1 Supply Pack","AX/AR-23 Guard Dog"],boosters:["Motivational Shocks","Stamina Enhancement"]},
+  {id:"entrenched",type:"premium",primaries:["SG-225 Breaker","AR-23 Liberator","CB-9 Crossbow"],secondaries:["GP-31 Grenade Pistol"],grenades:["G-123 Thermite","G-12 High Explosive"],stratagems:["FX-12 Shield Generator Relay","MD-6 Anti-Personnel Minefield","380mm HB Mortar Barrage"],boosters:["Democracy Protects","Unflinching"]},
+  {id:"exo",type:"premium",primaries:["SMG-203 Gallant","AR-23 Liberator"],secondaries:["P-33 Missile Pistol"],grenades:["G-12 High Explosive"],stratagems:["EXO-51 Lumberer","EXO-55 Breakthrough","MGX-42 Bullet Storm"],boosters:["Expert Extraction Pilot","UAV Recon Booster"]},
+];
+
+const state = {
+  username: localStorage.getItem("hd2_user")||null,
+  selectedWB: new Set(["mobilize"]),
+  pollTimer: null,
+  isOnline: false,
+  currentState: null,
+  lastPollOk: 0,
+};
+
+window.addEventListener("load", async () => {
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+  buildWBGrid();
+  buildWBCatalog();
+  try {
+    const cached = JSON.parse(localStorage.getItem("hd2_wb_local")||"[]");
+    if(cached.length){ state.selectedWB=new Set(cached); state.selectedWB.add("mobilize"); }
+  } catch(e){}
+  applyLang();
+  window.addEventListener("beforeunload",()=>{
+    if(state.username) navigator.sendBeacon(`${GAS_URL}?token=${TOKEN}&action=disconnect&user=${encodeURIComponent(state.username)}`);
+  });
+});
+
+function enterDashboard(){
+  const s=document.getElementById("splash");
+  s.style.opacity="0";
+  setTimeout(()=>{
+    s.style.display="none";
+    document.getElementById("dashboard").classList.add("visible");
+    if(state.username){ loadWarbondsFromServer(); startPoll(); }
+    applyLang();
+  },450);
+}
+
+function openPanel(name){
+  document.getElementById("panel-"+name).classList.add("visible");
+  if(name==="randomizer"&&!state.pollTimer) startPoll();
+  if(name==="users"){ buildUserBtns(); updateWBGrid(); }
+}
+function closePanel(name){ document.getElementById("panel-"+name).classList.remove("visible"); }
+
+function setOnline(val){
+  state.isOnline=val;
+  document.getElementById("conn-badge").className="conn-badge "+(val?"online":"offline");
+  document.getElementById("conn-text").textContent=val?"ONLINE":"OFFLINE";
+}
+
+function gas(action,extra={}){
+  return new Promise(resolve=>{
+    const cb="_cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+    const params=new URLSearchParams({token:TOKEN,action,callback:cb,...extra});
+    const timer=setTimeout(()=>{ cleanup(); setOnline(false); resolve({error:"timeout"}); },10000);
+    function cleanup(){ clearTimeout(timer); delete window[cb]; const s=document.getElementById(cb); if(s)s.remove(); }
+    window[cb]=(data)=>{ cleanup(); resolve(data); };
+    const script=document.createElement("script");
+    script.id=cb; script.src=`${GAS_URL}?${params}`;
+    script.onerror=()=>{ cleanup(); setOnline(false); resolve({error:"script_error"}); };
+    document.head.appendChild(script);
+  });
+}
+
+async function poll(){
+  if(state.username) await gas("ping",{user:state.username});
+  const data=await gas("getState");
+  if(!data.error){ state.currentState=data; state.lastPollOk=Date.now(); setOnline(true); renderRandomizer(data); }
+  else setOnline(false);
+}
+function startPoll(){ poll(); if(state.pollTimer) clearInterval(state.pollTimer); state.pollTimer=setInterval(poll,3000); }
+async function manualRefresh(){
+  const btn=document.getElementById("btn-refresh");
+  btn.classList.add("spinning");
+  await poll();
+  setTimeout(()=>btn.classList.remove("spinning"),600);
+}
+
+function renderRandomizer(data){
+  const {players,loadout,votes,acceptState}=data;
+  const hasUser=!!state.username;
+  const hasLoadout=!!(loadout&&loadout.p1_username);
+  const isLocked=acceptState&&acceptState.allAccepted&&acceptState.connected>0;
+  const banner=document.getElementById("mission-banner");
+  if(loadout&&loadout.sector){
+    const lp=isLocked?`<span class="mpill pill-lock">\uD83D\uDD12 LOCKED</span>`:"";
+    banner.innerHTML=`<span class="mpill pill-diff">DIFF ${loadout.difficulty} \u2014 ${DIFF_NAMES[loadout.difficulty]||""}</span><span class="mpill pill-sector">${loadout.sector}</span><span class="mpill pill-faction">${loadout.faction}</span>${lp}`;
+  } else { banner.innerHTML=`<span class="mpill pill-na">${tr("no_mission")}</span>`; }
+  const grid=document.getElementById("players-grid");
+  grid.innerHTML="";
+  USERS.forEach(uname=>{
+    const conn=players&&players.find(p=>p.username===uname);
+    const isMe=uname===state.username;
+    const accepted=conn&&conn.accepted;
+    const slot=hasLoadout?findSlot(loadout,uname):null;
+    const hasSlot=!!slot;
+    const card=document.createElement("div");
+    card.className="player-card"+(conn?" connected":"")+(isMe?" mine":"")+(accepted?" accepted":"")+(hasSlot?" has-loadout":"");
+    if(hasSlot&&isMe) card.onclick=()=>handleAcceptToggle(uname,!accepted);
+    let body="";
+    if(hasSlot){
+      const ck=accepted?"pc-checkmark checked":"pc-checkmark";
+      const ci=accepted?"\u2713":"";
+      body=`<div class="slot-item"><div class="slot-lbl">Primary</div><div class="slot-val">${slot.primary}</div></div>
+<div class="slot-item"><div class="slot-lbl">Secondary</div><div class="slot-val">${slot.secondary}</div></div>
+<div class="slot-item"><div class="slot-lbl">Grenade</div><div class="slot-val">${slot.grenade}</div></div>
+<div class="slot-item"><div class="slot-lbl">Stratagems</div>
+${stratRow(slot.strat1,slot.strat1_type)}${stratRow(slot.strat2,slot.strat2_type)}${stratRow(slot.strat3,slot.strat3_type)}${stratRow(slot.strat4,slot.strat4_type)}
+</div><div class="slot-item"><div class="slot-lbl">Booster</div><div class="booster-val">${slot.booster}</div></div>
+${isMe?`<div class="${ck}">${ci}</div>`:(accepted?`<div class="pc-checkmark checked">\u2713</div>`:"")}`;
+    } else { body=`<div class="pc-empty">${conn?"Waiting for mission...":"Disconnected"}</div>`; }
+    card.innerHTML=`<div class="pc-hdr"><div class="pc-dot ${conn?"on":""}"></div><div class="pc-name">${uname}</div></div><div class="pc-body">${body}</div>`;
+    grid.appendChild(card);
+  });
+  if(votes){
+    document.getElementById("vote-label").textContent=tr("reroll_fmt",{v:votes.voted,n:votes.needed,c:votes.connected});
+    const pct=votes.needed>0?Math.min(Math.round((votes.voted/votes.needed)*100),100):0;
+    document.getElementById("vote-fill").style.width=pct+"%";
+  }
+  const connCount=players?players.length:0;
+  const canAct=hasUser&&connCount>=1&&!isLocked;
+  document.getElementById("btn-rand").disabled=!canAct;
+  document.getElementById("btn-vote").disabled=!hasUser||isLocked;
+  document.getElementById("btn-rand").textContent=isLocked?tr("locked_btn"):("\u25BA "+tr("randomize"));
+  const me=players&&players.find(p=>p.username===state.username);
+  const vBtn=document.getElementById("btn-vote");
+  if(me&&me.vote){ vBtn.classList.add("voted"); vBtn.textContent=isLocked?tr("locked_reroll"):tr("voted"); }
+  else { vBtn.classList.remove("voted"); vBtn.textContent=isLocked?tr("locked_reroll"):"RE-ROLL"; }
+}
+
+async function handleAcceptToggle(username,newVal){
+  if(!state.username||username!==state.username) return;
+  await gas("accept",{user:username,val:newVal.toString()});
+  await poll();
+}
+function stratRow(name,type){
+  const cls=type==="strat_red"?"dot-red":type==="strat_blue"?"dot-blue":"dot-green";
+  return `<div class="strat-row"><div class="strat-dot ${cls}"></div><div class="slot-val">${name||""}</div></div>`;
+}
+function findSlot(loadout,uname){
+  for(let i=1;i<=4;i++) if(loadout[`p${i}_username`]===uname) return {
+    primary:loadout[`p${i}_primary`],secondary:loadout[`p${i}_secondary`],grenade:loadout[`p${i}_grenade`],
+    strat1:loadout[`p${i}_strat1`],strat2:loadout[`p${i}_strat2`],strat3:loadout[`p${i}_strat3`],strat4:loadout[`p${i}_strat4`],
+    strat1_type:loadout[`p${i}_strat1_type`]||"strat_green",strat2_type:loadout[`p${i}_strat2_type`]||"strat_green",
+    strat3_type:loadout[`p${i}_strat3_type`]||"strat_green",strat4_type:loadout[`p${i}_strat4_type`]||"strat_green",
+    booster:loadout[`p${i}_booster`],
+  };
+  return null;
+}
+
+async function handleRandomize(){
+  if(!state.username){ showToast(tr("select_first")); return; }
+  const btn=document.getElementById("btn-rand");
+  btn.disabled=true; btn.textContent=tr("generating");
+  const result=await gas("randomize",{user:state.username});
+  btn.textContent="\u25BA "+tr("randomize");
+  if(result.error){ showToast("Error: "+result.error); btn.disabled=false; }
+  else { showToast(tr("generated")); await poll(); }
+}
+async function handleVote(){
+  if(!state.username){ showToast(tr("select_first")); return; }
+  const me=state.currentState&&state.currentState.players?state.currentState.players.find(p=>p.username===state.username):null;
+  const newVote=me?!me.vote:true;
+  await gas("vote",{user:state.username,vote:newVote.toString()});
+  await poll();
+}
+
+function buildUserBtns(){
+  const c=document.getElementById("user-btns"); c.innerHTML="";
+  const connected=state.currentState&&state.currentState.players?state.currentState.players.map(p=>p.username):[];
+  USERS.forEach(u=>{
+    const isMine=u===state.username;
+    const isTaken=!isMine&&connected.includes(u);
+    const btn=document.createElement("button");
+    btn.className="user-btn"+(isMine?" active":isTaken?" taken":"");
+    btn.textContent=u; btn.disabled=isTaken;
+    btn.onclick=isTaken?null:()=>selectUser(u);
+    c.appendChild(btn);
+  });
+}
+async function selectUser(uname){
+  if(state.username&&state.username!==uname) await gas("disconnect",{user:state.username});
+  state.username=uname;
+  localStorage.setItem("hd2_user",uname);
+  buildUserBtns();
+  document.getElementById("btn-user").textContent=uname.toUpperCase();
+  await loadWarbondsFromServer();
+  showToast(tr("welcome")+uname);
+  if(!state.pollTimer) startPoll();
+}
+async function loadWarbondsFromServer(){
+  if(!state.username) return;
+  const result=await gas("getWarbonds",{user:state.username});
+  if(result.warbonds&&result.warbonds.length>0) state.selectedWB=new Set(result.warbonds);
+  state.selectedWB.add("mobilize");
+  localStorage.setItem("hd2_wb_local",JSON.stringify(Array.from(state.selectedWB)));
+  updateWBGrid();
+  renderModalWarbonds();
+}
+function buildWBGrid(){
+  const grid=document.getElementById("wb-grid"); grid.innerHTML="";
+  WARBONDS.forEach(wb=>{
+    const btn=document.createElement("button");
+    const isActive=wb.free||state.selectedWB.has(wb.id);
+    btn.className="wb-btn"+(wb.free?" free":(isActive?" active":""));
+    btn.id="wb_"+wb.id;
+    btn.textContent=(wb.free?"\u2605 ":"")+wb.name;
+    btn.disabled=!!wb.free;
+    if(!wb.free) btn.onclick=()=>toggleWB(wb.id);
+    grid.appendChild(btn);
+  });
+}
+function updateWBGrid(){
+  WARBONDS.forEach(wb=>{ const btn=document.getElementById("wb_"+wb.id); if(!btn||wb.free) return; btn.className="wb-btn"+(state.selectedWB.has(wb.id)?" active":""); });
+}
+function toggleWB(id){ if(state.selectedWB.has(id)) state.selectedWB.delete(id); else state.selectedWB.add(id); state.selectedWB.add("mobilize"); updateWBGrid(); }
+function selectAllWB(val){ if(val) WARBONDS.forEach(wb=>state.selectedWB.add(wb.id)); else state.selectedWB=new Set(["mobilize"]); updateWBGrid(); }
+
+async function saveConfig(){
+  if(!state.username){ showToast(tr("select_first")); return; }
+  const saveBtn=document.getElementById("btn-save");
+  const statusEl=document.getElementById("save-status");
+  saveBtn.disabled=true; statusEl.className="save-status saving"; statusEl.textContent=tr("saving");
+  const wbArr=Array.from(state.selectedWB).filter(Boolean);
+  localStorage.setItem("hd2_wb_local",JSON.stringify(wbArr));
+  const result=await gas("saveWarbonds",{user:state.username,warbonds:wbArr.join(",")});
+  saveBtn.disabled=false;
+  if(result.error){ statusEl.className="save-status err"; statusEl.textContent=tr("err_save")+result.error; }
+  else {
+    statusEl.className="save-status ok"; statusEl.textContent=tr("saved");
+    renderModalWarbonds();
+    showToast(tr("saved"));
+    setTimeout(()=>{ statusEl.textContent=""; closePanel("users"); },800);
+  }
+}
+
+function buildWBCatalog(){
+  const container=document.getElementById("wb-catalog"); container.innerHTML="";
+  WARBONDS.forEach(wb=>{
+    const cat=WB_CATALOG.find(c=>c.id===wb.id); if(!cat) return;
+    const bc=wb.free?"badge-free":cat.type==="legendary"?"badge-legendary":"badge-premium";
+    const bl=wb.free?"FREE":cat.type==="legendary"?"LEGENDARY":"PREMIUM";
+    const entry=document.createElement("div"); entry.className="wb-entry";
+    entry.innerHTML=`<div class="wb-entry-hdr"><div class="wb-entry-name">${wb.name}</div><div class="wb-entry-badge ${bc}">${bl}</div></div>
+<div class="wb-entry-body">
+<div class="wb-slot"><div class="wb-slot-lbl">Primaries</div><div class="wb-slot-items">${cat.primaries.map(x=>`<span>${x}</span>`).join("")}</div></div>
+<div class="wb-slot"><div class="wb-slot-lbl">Secondaries</div><div class="wb-slot-items">${cat.secondaries.map(x=>`<span>${x}</span>`).join("")}</div></div>
+<div class="wb-slot"><div class="wb-slot-lbl">Grenades</div><div class="wb-slot-items">${cat.grenades.map(x=>`<span>${x}</span>`).join("")}</div></div>
+<div class="wb-slot"><div class="wb-slot-lbl">Stratagems</div><div class="wb-slot-items">${cat.stratagems.map(x=>`<span>${x}</span>`).join("")}</div></div>
+<div class="wb-slot" style="grid-column:1/-1"><div class="wb-slot-lbl">Boosters</div><div class="wb-slot-items">${cat.boosters.map(x=>`<span>${x}</span>`).join("")}</div></div>
+</div>`;
+    container.appendChild(entry);
+  });
+}
+
+function switchFaction(name,el){
+  document.querySelectorAll(".ftab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".faction-content").forEach(c=>c.classList.remove("visible"));
+  if(el) el.classList.add("active");
+  document.getElementById("fc-"+name).classList.add("visible");
+}
+
+function toggleUserModal(){
+  const o=document.getElementById("modal-overlay");
+  o.classList.toggle("visible");
+  if(o.classList.contains("visible")) updateModalContent();
+}
+function closeModalOutside(e){ document.getElementById("modal-overlay").classList.remove("visible"); }
+function updateModalContent(){
+  const u=state.username||"—";
+  const initials=u!=="—"?u.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2):"--";
+  document.getElementById("modal-avatar").textContent=initials;
+  document.getElementById("modal-uname").textContent=u.toUpperCase();
+  renderModalWarbonds();
+}
+function renderModalWarbonds(){
+  const list=document.getElementById("modal-wb-list"); list.innerHTML="";
+  const active=WARBONDS.filter(wb=>state.selectedWB.has(wb.id));
+  if(active.length===0){ list.innerHTML=`<div class="modal-wb-item" style="color:var(--steel)">None selected</div>`; return; }
+  active.forEach(wb=>{ const item=document.createElement("div"); item.className="modal-wb-item"; item.innerHTML=`<div class="modal-wb-dot"></div>${wb.name}`; list.appendChild(item); });
+}
+function handleLogout(){
+  if(state.username) gas("disconnect",{user:state.username});
+  state.username=null; state.selectedWB=new Set(["mobilize"]);
+  localStorage.removeItem("hd2_user");
+  if(state.pollTimer){ clearInterval(state.pollTimer); state.pollTimer=null; }
+  document.getElementById("modal-overlay").classList.remove("visible");
+  document.getElementById("btn-user").textContent=lang==="en"?"SELECT USER":"SELECCIONAR USUARIO";
+  showToast("Logged out");
+}
+
+function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2500); }
+</script>
+</body>
+</html>
