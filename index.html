@@ -451,10 +451,9 @@ html,body{height:100%;overflow:hidden;background:var(--dark);font-family:'Barlow
     <button class="btn-back" onclick="closePanel('stats')">&#8592; BACK</button>
     <span class="panel-title" id="title-stats">Statistics</span>
   </div>
-  <div class="panel-body">
-    <div class="stats-placeholder">
-      <img src="Statistics.png" alt="Statistics" class="img-black-bg" onerror="this.style.display='none'"/>
-      <p id="coming-soon-txt">COMING SOON</p>
+  <div class="panel-body" id="panel-stats-body">
+    <div id="stats-content">
+      <div class="stats-loading" id="stats-loading">Loading intel from Super Earth...</div>
     </div>
   </div>
 </div>
@@ -640,6 +639,8 @@ function openPanel(name){
   document.getElementById("panel-"+name).classList.add("visible");
   if(name==="randomizer"&&!state.pollTimer) startPoll();
   if(name==="users"){ buildUserBtns(); updateWBGrid(); }
+  if(name==="stats") loadStats();
+  if(name==="warbonds") buildWBCatalog();
 }
 function closePanel(name){ document.getElementById("panel-"+name).classList.remove("visible"); }
 
